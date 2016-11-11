@@ -1,0 +1,15 @@
+{
+  "name": "hivemp-unity-sdk",
+  "version": "1.0.0",
+  "description": "The Unity SDK for Hive.",
+  "author": "Redpoint Games Pty Ltd",
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "async": "^2.1.2",
+    "gulp": "^3.9.1",
+    "ncp": "^2.0.0",
+    "request": "^2.78.0",
+    "rimraf": "^2.5.4"
+  }
+}
