@@ -5,6 +5,7 @@ var rimraf = require('rimraf');
 var fs = require('fs');
 var spawn = require('child_process').spawn;
 var ncp = require('ncp').ncp;
+var replace = require('replace-in-file');
 
 gulp.task('mkdir-sdks', (callback) => {
   fs.mkdir('sdks/', (err) => {
@@ -96,14 +97,22 @@ gulp.task('generate-sdks', ['mkdir-sdks'], (callback) => {
               callback(new Error('sdk generation exited with non-zero exit code'));
             } else {
               console.log('generated', item.name);
+              var didCallback = false;
               ncp(
                 'sdks/' + item.name + '/src/main/CsharpDotNet2/HiveMP',
                 'Assets/HiveMP/GeneratedSDKs',
                 (err) => {
+                  if (didCallback) {
+                    return;
+                  }
+
+                  didCallback = true;
+
                   if (err) {
                     callback(err);
                     return;
                   }
+
                   callback(null, JSON.parse(body));
                 });
             }
@@ -121,3 +130,99 @@ gulp.task('generate-sdks', ['mkdir-sdks'], (callback) => {
     }
   );
 });
+
+gulp.task('patch-files', ['generate-sdks'], (ccb) => {
+  replace({
+    files: [
+      'Assets/HiveMP/GeneratedSDKs/**/*.cs'
+    ],
+    replace: /using System\.Web\;/g,
+    with: '',
+  }, (err, changedFiles) => {
+    if (err != null) {
+      ccb(err);
+      return;
+    }
+
+    replace({
+      files: [
+        'Assets/HiveMP/GeneratedSDKs/**/*.cs'
+      ],
+      replace: /ByteArray/g,
+      with: 'byte[]',
+    }, (err, changedFiles) => {
+      if (err != null) {
+        ccb(err);
+        return;
+      }
+
+      replace({
+        files: [
+          'Assets/HiveMP/GeneratedSDKs/**/*.cs'
+        ],
+        replace: 'public ApiException(int errorCode, string message) : base(message)',
+        with: 'public ApiException(int errorCode) : base("")',
+      }, (err, changedFiles) => {
+        if (err != null) {
+          ccb(err);
+          return;
+        }
+
+        replace({
+          files: [
+            'Assets/HiveMP/GeneratedSDKs/**/*.cs'
+          ],
+          replace: /public FileParameter ParameterToFile\(string name, Stream stream\)\s+{([^\}]+)}/g,
+          with: '',
+        }, (err, changedFiles) => {
+          if (err != null) {
+            ccb(err);
+            return;
+          }
+
+          replace({
+            files: [
+              'Assets/HiveMP/GeneratedSDKs/**/*.cs'
+            ],
+            replace: /foreach\(var param in queryParams\)\s+request.AddParameter\(param.Key, param.Value, ParameterType.GetOrPost\);/g,
+            with: 'foreach(var param in queryParams) request.AddParameter(param.Key, param.Value, ParameterType.QueryString);',
+          }, (err, changedFiles) => {
+            if (err != null) {
+              ccb(err);
+              return;
+            }
+
+            replace({
+              files: [
+                'Assets/HiveMP/GeneratedSDKs/**/*.cs'
+              ],
+              replace: /return \(Object\)RestClient.Execute\(request\);/g,
+              with: `var complete = false;
+            object response_ = null;
+            var handle = RestClient.ExecuteAsync(request, (response, handle_) =>
+            {
+                complete = true;
+                response_ = response;
+            });
+            while (!complete)
+            {
+                System.Threading.Thread.Sleep(0);
+            }
+
+            return response_;`,
+            }, (err, changedFiles) => {
+              if (err != null) {
+                ccb(err);
+                return;
+              }
+
+              ccb();
+            });
+          });
+        });
+      });
+    });
+  });
+});
+
+gulp.task('default', ['patch-files']);
