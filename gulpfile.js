@@ -225,4 +225,25 @@ gulp.task('patch-files', ['generate-sdks'], (ccb) => {
   });
 });
 
-gulp.task('default', ['patch-files']);
+gulp.task('build-sdk', ['patch-files'], function(callback) {
+  var process = spawn(
+    'powershell.exe',
+    [
+      '.\\Build.ps1'
+    ]
+  );
+  process.on('exit', (code) => {
+    fs.readFile('log.txt', 'utf-8', function(err, data) {
+      console.log(data);
+
+      if (code == 0) {
+        callback();
+        return;
+      }
+
+      callback(new Error('Unexpected exit code: ' + code));
+    });
+  });
+})
+
+gulp.task('default', ['build-sdk']);
