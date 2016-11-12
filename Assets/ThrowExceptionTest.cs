@@ -16,6 +16,11 @@ public class ThrowExceptionTest : MonoBehaviour
 
 	    Thrown = true;
 
-	    throw new Exception("this is a test");
+	    CallAnotherMethod();
 	}
+
+    void CallAnotherMethod()
+    {
+        throw new Exception("this is a test");
+    }
 }

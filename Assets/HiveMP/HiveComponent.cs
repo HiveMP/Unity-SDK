@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.RegularExpressions;
 using System.Threading;
 using HiveMP.ErrorReporting.Api;
 using HiveMP.ErrorReporting.Model;
@@ -20,8 +21,12 @@ public class HiveComponent : MonoBehaviour
     //
     //
 
-    [Header("Public Authentication")]
+    [Header("General Configuration")]
+    public string ApplicationName;
+    public string ApplicationVersion;
     public string PublicAPIKey;
+
+    [Header("Public Authentication")]
     public PublicAuthenticationModeEnum TemporarySession = PublicAuthenticationModeEnum.AutomaticallyCreateSession;
 
     [Header("User Authentication"), ReadOnly]
@@ -175,23 +180,71 @@ public class HiveComponent : MonoBehaviour
     {
         if (type == LogType.Error || type == LogType.Exception)
         {
+            if (logString.StartsWith("ApiException: Error calling ErrorPOST"))
+            {
+                // Ignore this error so we don't try and report our own failures.
+                return;
+            }
+
+            if (ErrorReportingMode == ErrorReportingModeEnum.NeverReport)
+            {
+                // Never report.
+                return;
+            }
+
+            if (ErrorReportingMode == ErrorReportingModeEnum.ReportOnlyRuntimeErrors)
+            {
+                // Only report errors that occur in the player.
+                if (Application.isEditor)
+                {
+                    return;
+                }
+            }
+
+            var stackTraceRegex = new Regex("^(?<method>(.*?))(\\(at\\s(?<filename>([^:]+)):(?<line>([0-9]+))\\))?$", RegexOptions.Multiline);
+            var entries = stackTraceRegex.Matches(stackTrace.Trim());
+            var stackTraceList = new List<StackTraceEntry>();
+            var i = 0;
+            foreach (Match entry in entries)
+            {
+                int? line = null;
+                int lineO;
+                if (entry.Groups["line"] != null)
+                {
+                    if (int.TryParse(entry.Groups["line"].Value.Trim(), out lineO))
+                    {
+                        line = lineO;
+                    }
+                }
+                stackTraceList.Add(new StackTraceEntry
+                {
+                    Filename = entry.Groups["filename"] != null ? entry.Groups["filename"].Value.Trim() : null,
+                    Column = null,
+                    Function = entry.Groups["method"] != null ? entry.Groups["method"].Value.Trim() : null,
+                    Line = line,
+                    Position = entries.Count - 1 - i,
+                    Userdata = null
+                });
+                i++;
+            }
+
             var error = new HiveMP.ErrorReporting.Model.Error
             {
-                ApplicationName = "Unity",
-                ApplicationVersion = "0.0.1",
+                ApplicationName = ApplicationName,
+                ApplicationVersion = ApplicationVersion,
                 EnvironmentData = new EnvironmentInformation
                 {
-                    CpuArchitectureNameIsPresent = false,
-                    CpuArchitectureName = string.Empty,
-                    GpuDeviceNameIsPresent = false,
-                    GpuDeviceName = string.Empty,
-                    OperatingSystemNameIsPresent = false,
-                    OperatingSystemName = string.Empty,
+                    CpuArchitectureNameIsPresent = true,
+                    CpuArchitectureName = SystemInfo.processorType,
+                    GpuDeviceNameIsPresent = true,
+                    GpuDeviceName = SystemInfo.graphicsDeviceVendor + " " + SystemInfo.graphicsDeviceName + " " + SystemInfo.graphicsDeviceVersion,
+                    OperatingSystemNameIsPresent = true,
+                    OperatingSystemName = SystemInfo.operatingSystem,
                     OperatingSystemVersionIsPresent = false,
                     OperatingSystemVersion = string.Empty
                 },
-                Message = logString + " " + stackTrace,
-                StackTrace = new List<StackTraceEntry>(),
+                Message = logString.Trim(),
+                StackTrace = stackTraceList,
                 UniquenessHash = string.Empty,
                 Userdata = new Dictionary<string, object>()
             };
