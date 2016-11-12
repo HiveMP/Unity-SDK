@@ -6,6 +6,7 @@ var fs = require('fs');
 var spawn = require('child_process').spawn;
 var ncp = require('ncp').ncp;
 var replace = require('replace-in-file');
+var zipFolder = require('zip-folder');
 
 gulp.task('mkdir-sdks', (callback) => {
   fs.mkdir('sdks/', (err) => {
@@ -246,6 +247,10 @@ gulp.task('build-sdk', ['patch-files'], function(callback) {
 
     callback(new Error('Unexpected exit code: ' + code));
   });
-})
+});
 
-gulp.task('default', ['build-sdk']);
+gulp.task('package-code', ['build-sdk'], function(callback) {
+  zipFolder('Assets/HiveMP', 'HiveMP.zip', callback);
+});
+
+gulp.task('default', ['package-code']);

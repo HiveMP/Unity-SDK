@@ -11,6 +11,7 @@
     "ncp": "^2.0.0",
     "replace-in-file": "^2.0.1",
     "request": "^2.78.0",
-    "rimraf": "^2.5.4"
+    "rimraf": "^2.5.4",
+    "zip-folder": "^1.0.0"
   }
 }
