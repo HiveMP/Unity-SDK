@@ -8,6 +8,7 @@ using HiveMP.ErrorReporting.Api;
 using HiveMP.ErrorReporting.Model;
 using HiveMP.TemporarySession.Api;
 using HiveMP.TemporarySession.Model;
+using Newtonsoft.Json;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -199,7 +200,7 @@ public class HiveComponent : MonoBehaviour
             {
                 _queuedOperations.Enqueue(() =>
                 {
-                    _errorReportingClient.ErrorPUT(error);
+                    _errorReportingClient.ErrorPOST(JsonConvert.SerializeObject(error));
                     Debug.Log("Reported error to HiveMP");
                 });
             }
