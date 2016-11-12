@@ -232,17 +232,19 @@ gulp.task('build-sdk', ['patch-files'], function(callback) {
       '.\\Build.ps1'
     ]
   );
+  process.stdout.on("data",function(data){
+      console.log(data.toString());
+  });
+  process.stderr.on("data",function(data){
+      console.error(data.toString());
+  });
   process.on('exit', (code) => {
-    fs.readFile('log.txt', 'utf-8', function(err, data) {
-      console.log(data);
+    if (code == 0) {
+      callback();
+      return;
+    }
 
-      if (code == 0) {
-        callback();
-        return;
-      }
-
-      callback(new Error('Unexpected exit code: ' + code));
-    });
+    callback(new Error('Unexpected exit code: ' + code));
   });
 })
 
