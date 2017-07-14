@@ -1,4 +1,4 @@
-Unity SDK for HiveMP
+HiveMP SDK for Unity
 ===============================
 
 This is the integrated Unity SDK for HiveMP.
